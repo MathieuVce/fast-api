@@ -12,8 +12,7 @@ app = FastAPI()
 origins = [
     "http://localhost:3000",
     "http://localhost",
-    "http://192.168.0.114:3000",
-    "http://192.168.0.114"
+    "https://tradeart.herokuapp.com"
 ] 
 
 app.add_middleware(
