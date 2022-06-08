@@ -10,7 +10,7 @@ import requests
 app = FastAPI()
 
 origins = [
-    "http://*",
+    "https://*",
     '*'
 ] 
 
