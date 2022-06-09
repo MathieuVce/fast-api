@@ -502,6 +502,18 @@ async def received_payment(payload: Request):
     
 
 #######################
+# @app.get("database_reload")
+# def database_reload():
+#     dbase = sqlite3.connect('Trade_Art_Platform.db', isolation_level=None)
+
+#     table = ('artist','artwork','command','customer','payment','likes')
+#     data = []
+#     for field in table :
+#         data.append( dbase.execute('''SELECT * FROM '{section}'''.format(section=str(field))))
+
+#     return {'data':data}
+
+
 @app.on_event("shutdown")
 def logout_all():
     dbase = sqlite3.connect('Trade_Art_Platform.db', isolation_level=None)
