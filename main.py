@@ -12,7 +12,8 @@ app = FastAPI()
 origins = [
     "http://localhost:3000",
     "http://localhost",
-    "https://tradeart-4366d.firebaseapp.com"
+    "https://tradeart-4366d.firebaseapp.com",
+    "https://tradeart.be/"
 ] 
 
 app.add_middleware(
@@ -246,7 +247,7 @@ async def register_work(payload: Request):
 
     else:
         try: 
-            dbase.execute('''INSERT INTO artwork(title,price,description,evaluation,picture,sold,info,artist_id) VALUES(?,?,?,?,?,?,?,?) ''', (str(values_dict['title']), float(values_dict['price']), str(values_dict['description']),str(values_dict['evaluation']), str(values_dict['picture']),int(0),int(values_dict['info']),int(values_dict['artist_id'])))
+            dbase.execute('''INSERT INTO artwork(title,price,description,evaluation,picture,sold,info,hidden,artist_id) VALUES(?,?,?,?,?,?,?,?,?) ''', (str(values_dict['title']), float(values_dict['price']), str(values_dict['description']),str(values_dict['evaluation']), str(values_dict['picture']),int(0),int(values_dict['info']),int(0),int(values_dict['artist_id'])))
             message = "Oeuvre publiée."
             status ='success'
         except:
@@ -256,7 +257,7 @@ async def register_work(payload: Request):
     dbase.close()
     return {'message':message,'status':status}
 
-@app.post("/delete_work") #AJOUTER DELETE EVERYTHING LINKED TO ARTWORK (COMMAND PAYMENT ETC..._)
+@app.post("/delete_work")
 async def delete_work(payload: Request): 
     values_dict = await payload.json()
 
@@ -265,8 +266,13 @@ async def delete_work(payload: Request):
     message = ""
     status =''
 
+    sold=dbase.execute(''' SELECT sold FROM artwork WHERE work_id = "{work_id}" '''.format(work_id=int(values_dict['work_id']))).fetchall()[0][0]
+
     try:
-        dbase.execute('''DELETE from artwork  WHERE work_id = "{work_id}" '''.format(work_id= int(values_dict['work_id'])))
+        if sold == 0: 
+            dbase.execute('''DELETE from artwork  WHERE work_id = "{work_id}" '''.format(work_id= int(values_dict['work_id'])))
+        elif sold == 1:
+            dbase.execute('''UPDATE artwork SET hidden = 1 WHERE work_id = "{work_id}" '''.format(work_id= int(values_dict['work_id'])))
         message = "Oeuvre correctement supprimée !"
         status ='success'
     except:
@@ -276,19 +282,50 @@ async def delete_work(payload: Request):
     dbase.close()
     return {'message':message,'status':status}
 
+@app.post("/like_work")
+async def like_work(payload: Request):
+    values_dict = await payload.json()
+
+    dbase = sqlite3.connect('Trade_Art_Platform.db', isolation_level=None)
+    customer = int(values_dict['customer_id'])
+    work = int(values_dict['work_id'])
+    delete = 1
+
+    likes = dbase.execute('''SELECT * FROM likes WHERE work_id = "{work_id}" '''.format(work_id=work)).fetchall()
+    for like in likes:
+        if like[1] == customer:
+            print('dislike')
+            delete = 0
+            dbase.execute('''DELETE  FROM likes WHERE customer_id ='{customer_id}' AND work_id='{work_id}' '''.format(customer_id=customer, work_id= work))
+        
+    if delete == 1:
+        print('like')
+        dbase.execute('''INSERT INTO likes(customer_id,work_id) VALUES(?,?) ''', (customer, work))
+    
+    status = 'success'
+    dbase.close()
+    
+    return{'status':status}
+
+
+
+
 @app.get("/all_work")
 async def all_work():
     dbase = sqlite3.connect('Trade_Art_Platform.db', isolation_level=None)
     data=[]
+    newData = []
 
     try:
-        data = dbase.execute('''SELECT * FROM artwork LEFT JOIN artist ON artist.artist_id = artwork.artist_id ORDER BY sold ASC ''').fetchall()
+        data = dbase.execute('''SELECT * FROM artwork LEFT JOIN artist ON artist.artist_id = artwork.artist_id WHERE hidden = 0 ORDER BY sold ASC ''').fetchall()
+        for work in data : 
+            liked = dbase.execute('''SELECT customer_id FROM likes WHERE likes.work_id = '{work_id}' '''.format(work_id=work[0])).fetchall()
+            newData.append([work, liked]) 
         status = 'success'
     except:
         status = 'error'
-
     dbase.close()
-    return {'status':status, 'data':data}
+    return {'status':status, 'data': newData}
 
 @app.post("/check_yourwork")
 async def check_yourwork(payload: Request):
@@ -300,21 +337,25 @@ async def check_yourwork(payload: Request):
     status = ''
     message = ''
     data=[]
-
+    newData = []
     
     if int(logverif[0][0]) == 0:
         status ='error'
         message = 'Vous devez être connecté pour voir vos oeuvres'
     else:
-        data = dbase.execute('''SELECT * FROM artwork WHERE artist_id = "{artist_id}" ORDER BY sold ASC'''.format(artist_id=int(values_dict['artist_id']))).fetchall()
-        status = 'success'
-        message= ''
+        data = dbase.execute('''SELECT * FROM artwork WHERE hidden = 0 AND artist_id = "{artist_id}" ORDER BY sold ASC'''.format(artist_id=int(values_dict['artist_id']))).fetchall()
         if len(data) == 0:
             status = 'warning'
             message = 'Vous n\'avez pas encore d\'oeuvres'
-
+        else:
+            for work in data : 
+                liked = dbase.execute('''SELECT customer_id FROM likes WHERE likes.work_id = '{work_id}' '''.format(work_id=work[0])).fetchall()
+                newData.append([work, liked]) 
+            status = 'success'
+            message= ''
+        
     dbase.close()
-    return {'status': status,'data': data, 'message': message}
+    return {'status': status,'data': newData, 'message': message}
 
 ##########################
 
@@ -471,3 +512,6 @@ def logout_all():
     for iid in customers:
         dbase.execute('''UPDATE customer SET is_logged = 0 WHERE customer_id = "{customerid}"'''.format(customerid=int(iid[0])))
     dbase.close()
+
+if __name__ == '__main__':
+    uvicorn.run(app, host='0.0.0.0',port=8000)

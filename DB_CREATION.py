@@ -38,6 +38,15 @@ dbase.execute('''
     ) ''')
 
 dbase.execute('''
+    CREATE TABLE IF NOT EXISTS likes (
+        like INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        work_id INTEGER NOT NULL, 
+        FOREIGN KEY(customer_id) REFERENCES customer(customer_id)
+        FOREIGN KEY(work_id) REFERENCES artwork(work_id)
+    ) ''')
+
+dbase.execute('''
     CREATE TABLE IF NOT EXISTS artwork (
         work_id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -47,7 +56,8 @@ dbase.execute('''
         picture TEXT NOT NULL, 
         sold INTEGER NOT NULL,
         info INTEGER NOT NULL,
-        artist_id INTEGER NOT NULL,11
+        hidden INTEGER NOT NULL,
+        artist_id INTEGER NOT NULL,
         FOREIGN KEY(artist_id) REFERENCES artist(artist_id)
     ) ''')
 
