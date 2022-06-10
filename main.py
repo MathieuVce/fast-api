@@ -13,7 +13,9 @@ origins = [
     "http://localhost:3000",
     "http://localhost",
     "https://tradeart-4366d.firebaseapp.com",
-    "https://tradeart.be"
+    "https://tradeart.be",
+    "https://tradeart.site",
+    "https://sites.google.com/view/tradeart",
 ] 
 
 app.add_middleware(
