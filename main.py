@@ -16,6 +16,7 @@ origins = [
     "https://tradeart.be",
     "https://tradeart.site",
     "https://sites.google.com/view/tradeart",
+    
 ] 
 
 app.add_middleware(
